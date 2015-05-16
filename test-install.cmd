@@ -1,5 +1,5 @@
 @echo off
-set TOME_ROOT=%~dp0
-cd %TOME_ROOT%
-call python tome.py install
+set FLINT_ROOT=%~dp0
+cd %FLINT_ROOT=%
+call python flint.py --dry-run example.yml
 pause
