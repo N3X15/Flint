@@ -1,0 +1,35 @@
+noscript:
+  name: NoScript
+  moz-addon: 722
+
+dlbar:
+  name: Download Bar
+  moz-addon: 476246
+
+adblockplus:
+  name: AdBlock Plus
+  url: 'https://update.adblockplus.org/latest/adblockplusfirefox.xpi'
+  dev-url: 'https://adblockplus.org/devbuilds/adblockplus/00latest.xpi'
+  aliases:
+    - adblock
+    - abp
+
+abp-ehh:
+  name: Element Hiding Helper for AdBlock Plus
+  url: https://update.adblockplus.org/latest/elemhidehelper.xpi
+  dev-url: 'https://adblockplus.org/devbuilds/adblockplus/00latest.xpi'
+  aliases:
+    - ehh
+    - element-hiding-helper
+
+abp-popup:
+  name: Adblock Plus Pop-up Addon
+  moz-addon: 83098
+
+mega:
+  name: 'Mega'
+  url: 'https://mega.co.nz/mega.xpi'
+
+restart:
+  name: 'Restart'
+  moz-addon: 369148
