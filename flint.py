@@ -28,6 +28,9 @@ import argparse
 import yaml
 import configparser
 import tempfile
+import untangle
+import pickle
+import hashlib
 
 from mozprofile import Profile
 from mozprofile.addons import AddonManager
@@ -35,22 +38,47 @@ from mozprofile.prefs import Preferences
 
 script_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(os.path.join(script_dir, 'lib', 'buildtools'))
+sys.path.append(os.path.join(script_dir, 'lib', 'amo-api', 'python'))  # Packaging nightmare.
 
 from buildtools import cmd, log, http
 from buildtools import os_utils
 from buildtools.wrapper import Git
 from buildtools.bt_logging import IndentLogger
 
+from amo.api import Server
+
 global FF_APPDATA_DIR, FF_PROFILE_DIR, FF_PROFILE_INI, PACKAGES
 
 FLINT_VERSION = '0.0.1'
 
 flint_temp = os.path.join(os.getcwd(), 'packages')
+flint_cachefile = os.path.join(flint_temp, '_cache.dat')
 home_dir = os.path.expanduser('~')
 
 
 def _getMozAddonURI(addonID):
-  return 'https://addons.mozilla.org/firefox/downloads/latest/{0}/addon-{0}-latest.xpi?src=ffaddon-installer.py'.format(addonID)
+  return 'https://addons.mozilla.org/firefox/downloads/latest/{0}/addon-{0}-latest.xpi?src=flint'.format(addonID)
+
+
+class APICache:
+  data = {}
+
+  @classmethod
+  def Store(cls, key, value):
+    cls.data[key] = value
+
+    with open(flint_cachefile, 'w') as f:
+      pickle.dump(cls.data, f)
+
+  @classmethod
+  def Load(cls):
+    if os.path.isfile(flint_cachefile):
+      with open(flint_cachefile, 'r') as f:
+        cls.data = pickle.load(f)
+
+  @classmethod
+  def Get(cls, key):
+    return cls.data.get(key, None)
 
 
 class FFPackage(object):
@@ -66,9 +94,6 @@ class FFPackage(object):
     prefix = 'dev-' if dev else ''
     if prefix + 'url' in yml:
       self.url = yml['url']
-      return True
-    if prefix + 'moz-addon' in yml:
-      self.url = _getMozAddonURI(yml['moz-addon'])
       return True
     if dev:
       return self._grabURL(yml, False)
@@ -105,6 +130,67 @@ class FFPackage(object):
             else:
               prefs[k] = v
               log.info('Set %s to %r', k, str(v))
+
+
+class AMOPackage(FFPackage):
+  api = Server('amo')
+
+  def __init__(self, _id, name='', amoID=0, filename=None, config={}):
+    super(AMOPackage, self).__init__(_id, name, None, filename, config)
+    self.amoID = amoID
+
+  def _grabURL(self, yml, dev):
+    self.amoID = yml['moz-addon']
+    self.devmode = dev
+    return True
+
+  def fromYaml(self, yml, args):
+    FFPackage.fromYaml(self, yml, args)
+
+  def _grabRealURL(self, addon=None):
+    if not addon:
+      apic_key = 'amo_' + str(self.amoID)
+      xml = APICache.Get(apic_key)
+      if xml is None:
+        xml = self.api.addon.get(id=self.amoID)
+        APICache.Store(apic_key, xml)
+      addon = untangle.parse(xml)
+    for install in addon.addon.get_elements('install'):
+      if self.devmode:
+        if install.get_attribute('status') == 'Beta':
+          log.info('Found BETA URL: %s', install.cdata)
+          return install['hash'], install.cdata
+      else:
+        if not install.get_attribute('status'):
+          log.info('Found STABLE URL: %s', install.cdata)
+          log.info(install)
+          return install['hash'], install.cdata
+    if self.devmode:
+      self.devmode = False
+      return self._grabRealURL(addon)
+    return False
+
+  def get_hash_of(self, algo_cb, filename, blocksize=2048):
+    m = algo_cb()
+    with open(filename, 'rb') as f:
+      while True:
+        b = f.read(blocksize)
+        if not b:
+          break
+        m.update(b)
+    return m.hexdigest().lower()
+
+  def check_hash_of(self, _hash, filename):
+    hashtype, hashvalue = _hash.split(':')
+    return self.get_hash_of(getattr(hashlib, hashtype), filename) == hashvalue.lower()
+
+  def install(self, fp, args, prefs):
+    self.hash, self.url = self._grabRealURL()
+    fullpath = os.path.join(flint_temp, self.filename)
+    if os.path.isfile(fullpath) and not self.check_hash_of(self.hash, fullpath):
+      os.remove(fullpath)
+      log.warn('Hash mismatch: %s', fullpath)
+    FFPackage.install(self, fp, args, prefs)
 
 PACKAGES = {}
 
@@ -150,16 +236,6 @@ def locateFirefoxDirs():
   log.info('Profile: %s', FF_PROFILE_DIR)
 
 
-def CloneOrPull(id, uri, dir):
-  if not os.path.isdir(dir):
-    cmd(['git', 'clone', uri, dir], echo=True, show_output=True, critical=True)
-  else:
-    with os_utils.Chdir(dir):
-      cmd(['git', 'pull'], echo=True, show_output=True, critical=True)
-  with os_utils.Chdir(dir):
-    log.info('{} is now at commit {}.'.format(id, Git.GetCommit()))
-
-
 if __name__ == '__main__':
   argp = argparse.ArgumentParser(prog='tome', description='Install and configure Firefox addons.', version=FLINT_VERSION)
   argp.add_argument('configfile', type=argparse.FileType('r'), help='YAML configuration file.')
@@ -176,9 +252,11 @@ if __name__ == '__main__':
   if args.refresh:
     log.info('Refreshing cache...')
     if os.path.isdir(flint_temp):
-      os_util.safe_rmtree(flint_temp)
+      os_utils.safe_rmtree(flint_temp)
 
   os_utils.ensureDirExists(flint_temp, mode=0o700, noisy=True)
+
+  APICache.Load()
 
   locateFirefoxDirs()
 
@@ -210,7 +288,10 @@ if __name__ == '__main__':
       if yml:
         if 'id' not in yml:
           print(repr(yml))
-        pkg = FFPackage(yml['id'])
+        if 'moz-addon' in yml:
+          pkg = AMOPackage(yml['id'])
+        else:
+          pkg = FFPackage(yml['id'])
         pkg.fromYaml(yml, args)
         pkgs.append(pkg)
     fp = Profile(FF_PROFILE_DIR, restore=False)

@@ -37,7 +37,7 @@ Then you chuck that onto a thumbdrive, alongside:
 Flint requires Python 2.7, PyYaml, configparser, mozprofile, and pyinstaller (which itself requires pywin32).
 
 ```
-pip install PyYaml configparser mozprofile pyinstaller
+pip install PyYaml configparser mozprofile pyinstaller jinja2 psutil untangle
 ```
 
 # Issues

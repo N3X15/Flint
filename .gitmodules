@@ -1,3 +1,6 @@
 [submodule "lib/buildtools"]
 	path = lib/buildtools
 	url = https://github.com/N3X15/python-build-tools.git
+[submodule "lib/amo-api"]
+	path = lib/amo-api
+	url = https://github.com/andymckay/amo-api.git
