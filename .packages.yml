@@ -15,21 +15,41 @@ adblockplus:
     - abp
 
 abp-ehh:
-  name: Element Hiding Helper for AdBlock Plus
-  url: https://update.adblockplus.org/latest/elemhidehelper.xpi
+  name: 'Element Hiding Helper for AdBlock Plus'
+  url: 'https://update.adblockplus.org/latest/elemhidehelper.xpi'
   dev-url: 'https://adblockplus.org/devbuilds/adblockplus/00latest.xpi'
   aliases:
     - ehh
     - element-hiding-helper
 
 abp-popup:
-  name: Adblock Plus Pop-up Addon
+  name: 'Adblock Plus Pop-up Addon'
   moz-addon: 83098
 
 mega:
-  name: 'Mega'
+  name: 'MEGA'
   url: 'https://mega.co.nz/mega.xpi'
 
 restart:
   name: 'Restart'
   moz-addon: 369148
+
+keefox:
+  name: 'KeeFox'
+  moz-addon: 306880
+
+screengrab:
+  name: 'ScreenGrab'
+  moz-addon: 355813
+
+tab-mix-plus:
+  name: 'Tab Mix Plus'
+  moz-addon: 1122
+
+self-destructing-cookies:
+  name: 'Self-Destructing Cookies'
+  moz-addon: 415846
+
+cookie-monster:
+  name: 'Cookie Monster'
+  moz-addon: 309764

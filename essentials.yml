@@ -5,3 +5,18 @@ addons:
   - noscript
   - abp-ehh
   - abp-popup
+
+prefs:
+  #browser.altClickSave: true #re-enable saving w/ alt-click
+  browser.feeds.showFirstRunUI: false # disable initial RSS intro
+  browser.rights.3.shown: true # don't show EULA
+  #browser.pagethumbnails.capturing_disabled: true # no page thmbnails
+  #browser.showQuitWarning: true # prompt to save session on exit
+  browser.slowStartup.notificationDisabled: false # no slow notice
+  browser.startup.homepage_override.mstone: "ignore" # no upg. pages
+  mozilla.widget.raise-on-setfocus: false # disable focus stealing
+  #media.webaudio.enabled: true # enable webaudio API (def. in 25)
+
+  # Google is default SE
+  browser.search.defaultenginename: Google
+  browser.search.defaultenginename.US: Google

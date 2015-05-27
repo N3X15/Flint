@@ -53,7 +53,5 @@ You can file bug reports and make PRs, though.
 
 # TODO List
 
- * [ ] :soon: prefs.js pre-configuration.
  * [ ] Post-install scripts.
- * [ ] :soon: Playbook-level prefs.js configuration.
  * [ ] Yell at user if they have Firefox running.

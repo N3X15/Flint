@@ -276,6 +276,8 @@ if __name__ == '__main__':
             PACKAGES[alias] = cleanSpec
           PACKAGES[pkgID] = cleanSpec
 
+  prefsjs_path = os.path.join(FF_PROFILE_DIR, 'prefs.js')
+  prefs = {k: v for k, v in reversed(Preferences.read_prefs(prefsjs_path))}
   with log.info('Installing addons...'):
     pkgs = []
     for aspec in cfg.get('addons', {}):
@@ -295,6 +297,20 @@ if __name__ == '__main__':
         pkg.fromYaml(yml, args)
         pkgs.append(pkg)
     fp = Profile(FF_PROFILE_DIR, restore=False)
-    prefs = {k: v for k, v in reversed(Preferences.read_prefs(os.path.join(FF_PROFILE_DIR, 'prefs.js')))}
     for pkg in pkgs:
       pkg.install(fp, args, prefs)
+
+  with log.info('Setting preferences...'):
+    changed = False
+    for k, v in cfg.get('prefs', {}).items():
+      if k not in prefs or prefs[k] != cfg['prefs'][k]:
+        prefs[k] = cfg['prefs'][k]
+        log.info('%s = %s', k, v)
+        changed = True
+    if changed:
+      prefs_sorted = []
+      for k in sorted(prefs.keys()):
+        prefs_sorted.append((k, prefs[k]))
+      with open(prefsjs_path, 'w') as pf:
+        Preferences.write(pf, prefs_sorted)
+      log.info('Wrote prefs.js.')
