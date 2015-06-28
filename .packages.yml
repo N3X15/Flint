@@ -38,6 +38,10 @@ keefox:
   name: 'KeeFox'
   moz-addon: 306880
 
+greasemonkey:
+  name: 'GreaseMonkey'
+  moz-addon: 748
+
 screengrab:
   name: 'ScreenGrab'
   moz-addon: 355813
@@ -49,6 +53,10 @@ tab-mix-plus:
 self-destructing-cookies:
   name: 'Self-Destructing Cookies'
   moz-addon: 415846
+
+flashgot:
+  name: 'FlashGot'
+  moz-addon: 220
 
 cookie-monster:
   name: 'Cookie Monster'

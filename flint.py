@@ -31,6 +31,7 @@ import tempfile
 import untangle
 import pickle
 import hashlib
+import platform
 
 from mozprofile import Profile
 from mozprofile.addons import AddonManager
@@ -49,12 +50,15 @@ from amo.api import Server
 
 global FF_APPDATA_DIR, FF_PROFILE_DIR, FF_PROFILE_INI, PACKAGES
 
-FLINT_VERSION = '0.0.1'
+FLINT_VERSION = '0.0.2'
 
 flint_temp = os.path.join(os.getcwd(), 'packages')
 flint_cachefile = os.path.join(flint_temp, '_cache.dat')
 home_dir = os.path.expanduser('~')
 
+PLATFORMID = u'WINNT'
+if platform.system() == 'Linux':
+  PLATFORMID=u'Linux'
 
 def _getMozAddonURI(addonID):
   return 'https://addons.mozilla.org/firefox/downloads/latest/{0}/addon-{0}-latest.xpi?src=flint'.format(addonID)
@@ -156,6 +160,9 @@ class AMOPackage(FFPackage):
         APICache.Store(apic_key, xml)
       addon = untangle.parse(xml)
     for install in addon.addon.get_elements('install'):
+      if install.get_attribute('os') not in (u'ALL',PLATFORMID):
+        log.info('Skipping URL %s (bad OS %r)',install.cdata,install.get_attribute('os'))
+        continue
       if self.devmode:
         if install.get_attribute('status') == 'Beta':
           log.info('Found BETA URL: %s', install.cdata)
@@ -235,9 +242,30 @@ def locateFirefoxDirs():
     raise Exception('Unable to find FF_PROFILE_DIR.')
   log.info('Profile: %s', FF_PROFILE_DIR)
 
+def stripCommentsFrom(filename):
+  with log.info('Stripping comments from %s...'):
+    with open(filename,'r') as inf:
+      incomment=False
+      with open(filename+'.stripped','w') as outf:
+        ln=0
+        for line in inf:
+          ln+=1
+          line=line.strip()
+          if line.startswith('/*'):
+            incomment=True
+            log.info('Comment started at line %d',ln)
+            continue
+          if line.endswith('*/'):
+            incomment = False
+            log.info('Comment ended at line %d',ln)
+            continue
+          if not incomment:
+            outf.write(line+'\n')
+    os.remove(filename)
+    os.rename(filename+'.stripped',filename)
 
 if __name__ == '__main__':
-  argp = argparse.ArgumentParser(prog='tome', description='Install and configure Firefox addons.', version=FLINT_VERSION)
+  argp = argparse.ArgumentParser(prog='flint', description='Install and configure Firefox addons.', version=FLINT_VERSION)
   argp.add_argument('configfile', type=argparse.FileType('r'), help='YAML configuration file.')
   argp.add_argument('--dry-run', dest='dry_run', action='store_true', default=False, help='Do not install addons, just go through the motions.')
   argp.add_argument('--dl-only', dest='dl_only', action='store_true', default=False, help='Do not install addons, only download them.  Good for precaching for an offline install.')
@@ -276,8 +304,19 @@ if __name__ == '__main__':
             PACKAGES[alias] = cleanSpec
           PACKAGES[pkgID] = cleanSpec
 
+  if not os.path.isdir(FF_PROFILE_DIR):
+    log.info('Creating profile...')
+  else:
+    log.info('Loading profile...')
+  fp = Profile(profile=FF_PROFILE_DIR, restore=False)
   prefsjs_path = os.path.join(FF_PROFILE_DIR, 'prefs.js')
-  prefs = {k: v for k, v in reversed(Preferences.read_prefs(prefsjs_path))}
+  prefs = {}
+
+  if os.path.isfile(prefsjs_path):
+    stripCommentsFrom(prefsjs_path)
+    with log.info('Loading prefs.js...'):
+      prefs = {k: v for k, v in reversed(Preferences.read_prefs(prefsjs_path))}
+
   with log.info('Installing addons...'):
     pkgs = []
     for aspec in cfg.get('addons', {}):
@@ -296,7 +335,6 @@ if __name__ == '__main__':
           pkg = FFPackage(yml['id'])
         pkg.fromYaml(yml, args)
         pkgs.append(pkg)
-    fp = Profile(FF_PROFILE_DIR, restore=False)
     for pkg in pkgs:
       pkg.install(fp, args, prefs)
 
@@ -305,12 +343,15 @@ if __name__ == '__main__':
     for k, v in cfg.get('prefs', {}).items():
       if k not in prefs or prefs[k] != cfg['prefs'][k]:
         prefs[k] = cfg['prefs'][k]
-        log.info('%s = %s', k, v)
+        log.info('%s = %s%s', k, v, ' (SKIPPED)' if args.dry_run else '')
         changed = True
     if changed:
       prefs_sorted = []
       for k in sorted(prefs.keys()):
         prefs_sorted.append((k, prefs[k]))
-      with open(prefsjs_path, 'w') as pf:
-        Preferences.write(pf, prefs_sorted)
-      log.info('Wrote prefs.js.')
+      with open('prefs.yml', 'w') as pfyaml:
+        yaml.dump(prefs, pfyaml, default_flow_style=False)
+      if not args.dry_run:
+        with open(prefsjs_path, 'w') as pf:
+          Preferences.write(pf, prefs_sorted)
+          log.info('Wrote prefs.js.')

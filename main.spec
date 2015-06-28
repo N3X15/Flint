@@ -2,8 +2,8 @@
 script_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(os.path.join(script_dir, 'lib', 'buildtools'))
 a = Analysis(['flint.py'],
-             pathex=['lib/buildtools'],
-             hiddenimports=['buildtools'],
+             pathex=['lib/buildtools','lib/amo-api/python'],
+             hiddenimports=['buildtools','amo.api'],
              hookspath=None)
 #files = os.listdir('icons')
 #for file in files:

@@ -2,3 +2,6 @@
 /dist
 /php.zip
 /packages
+/prefs.js
+/prefs.yml
+*.bak

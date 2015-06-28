@@ -1,6 +1,6 @@
 addons:
   - adblock
-  - mega
+  # BROKEN - mega
   - dlbar
   - noscript
   - abp-ehh
@@ -17,6 +17,6 @@ prefs:
   mozilla.widget.raise-on-setfocus: false # disable focus stealing
   #media.webaudio.enabled: true # enable webaudio API (def. in 25)
 
-  # Google is default SE
+  # Google is default Search Engine
   browser.search.defaultenginename: Google
   browser.search.defaultenginename.US: Google
